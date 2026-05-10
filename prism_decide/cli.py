@@ -148,10 +148,15 @@ def decide(ctx, decision: Optional[str], options, agents, json_output):
     import time
     start = time.time()
 
-    with console.status("🧠  Reuniendo el consejo de agentes…", spinner="dots"):
+    console.print(f"[bold cyan]prism-decide[/] [dim]· deliberating[/]")
+    console.print()
+
+    with console.status("  [dim]consulting agents…[/]", spinner="dots"):
         matrix = council.deliberate(decision, agent_ids=agent_ids, options=explicit_options)
 
     elapsed = time.time() - start
+
+    console.print()
 
     if json_output:
         click.echo(syn.format_json(matrix))
@@ -160,8 +165,12 @@ def decide(ctx, decision: Optional[str], options, agents, json_output):
 
     model_name = ctx.obj.get("_model_name", "")
     provider_name = ctx.obj.get("_provider_name", "")
-    console.print(f"[dim]🤖 {provider_name}/{model_name}  ·  ⏱ {elapsed:.1f}s[/]")
+    console.print(f"[dim]{provider_name}/{model_name}  ·  ⏱ {elapsed:.1f}s[/]")
     console.print()
+
+    verbose = ctx.parent.params.get("verbose", False)
+    if verbose:
+        console.print(f"[dim]key set: {'✓' if hasattr(provider, '_api_key') and provider._api_key else '✗'}[/]")
 
 
 @cli.command("list-agents")
