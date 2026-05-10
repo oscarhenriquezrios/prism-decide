@@ -52,7 +52,7 @@ class OpenAIProvider(BaseProvider):
     def _supports_json_mode(self) -> bool:
         """Check if the current provider supports native JSON mode."""
         url_lower = self.base_url.lower()
-        return any(p in url_lower for p in ["openai.com", "openrouter"])
+        return any(p in url_lower for p in ["openai.com", "openrouter", "deepseek"])
 
     def complete(
         self,

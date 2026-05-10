@@ -40,10 +40,12 @@ def _get_provider(model: str, api_key: str):
 
 
 @click.group()
-@click.option("--model", default=None, help="LLM model to use")
+@click.option("--model", default=None, help="LLM model to use (default: from config or gpt-4o-mini)")
+@click.option("--provider", default=None, help="Provider: openai, deepseek, openrouter, anthropic, ollama")
 @click.option("--api-key", default="", help="API key (or set env var)")
+@click.option("--verbose", "-v", is_flag=True, help="Show provider/model info")
 @click.pass_context
-def cli(ctx, model: Optional[str], api_key: str):
+def cli(ctx, model: Optional[str], provider: Optional[str], api_key: str, verbose: bool):
     """🏛️ Prism-Decide — Multi-agent deliberation for better decisions."""
     ctx.ensure_object(dict)
 
@@ -54,10 +56,52 @@ def cli(ctx, model: Optional[str], api_key: str):
     except Exception:
         pass
 
-    resolved_model = model or cfg.get("provider", {}).get(cfg.get("provider", {}).get("default", "openai"), {}).get("model", "gpt-4o-mini")
+    # Resolve provider
+    resolved_provider = provider or cfg.get("provider", {}).get("default", "")
+    # Auto-detect from env vars if not set
+    if not resolved_provider:
+        import os
+        if os.environ.get("DEEPSEEK_API_KEY"):
+            resolved_provider = "deepseek"
+        elif os.environ.get("OPENAI_API_KEY") and not os.environ.get("DEEPSEEK_API_KEY"):
+            resolved_provider = "openai"
+        elif os.environ.get("ANTHROPIC_API_KEY"):
+            resolved_provider = "anthropic"
+        elif os.environ.get("OPENROUTER_API_KEY"):
+            resolved_provider = "openrouter"
+        else:
+            resolved_provider = "openai"
+
+    # Resolve model
+    if model:
+        resolved_model = model
+    else:
+        provider_cfg = cfg.get("provider", {}).get(resolved_provider, {})
+        resolved_model = provider_cfg.get("model", "")
+        if not resolved_model:
+            default_models = {
+                "openai": "gpt-4o-mini",
+                "deepseek": "deepseek-chat",
+                "openrouter": "openai/deepseek-chat",
+                "anthropic": "claude-sonnet-4-20250514",
+                "ollama": "llama3",
+            }
+            resolved_model = default_models.get(resolved_provider, "gpt-4o-mini")
+
+    # Resolve API key
     if not api_key:
         import os
-        api_key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("DEEPSEEK_API_KEY", "")
+        env_keys = {
+            "deepseek": "DEEPSEEK_API_KEY",
+            "openai": "OPENAI_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+        }
+        env_var = env_keys.get(resolved_provider, "OPENAI_API_KEY")
+        api_key = os.environ.get(env_var, "")
+
+    if verbose:
+        click.echo(f"🔧 Provider: {resolved_provider} | Model: {resolved_model} | Key set: {'✓' if api_key else '✗'}", err=True)
 
     ctx.obj["provider"] = _get_provider(resolved_model, api_key)
 
