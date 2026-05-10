@@ -38,7 +38,7 @@ def _get_provider(model: str, api_key: str):
         return OpenAIProvider(model=model, api_key=api_key)
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.option("--model", default=None, help="LLM model to use (default: from config or gpt-4o-mini)")
 @click.option("--provider", default=None, help="Provider: openai, deepseek, openrouter, anthropic, ollama")
 @click.option("--api-key", default="", help="API key (or set env var)")
@@ -90,14 +90,11 @@ def cli(ctx, model: Optional[str], provider: Optional[str], api_key: str, verbos
     # Resolve API key — check config file first, then env vars
     if not api_key:
         import os
-        # Try to get key from config file
         provider_cfg = cfg.get("provider", {}).get(resolved_provider, {})
         api_key = provider_cfg.get("api_key", "")
-        # If it's an env var reference like ${DEEPSEEK_API_KEY}, resolve it
         if api_key.startswith("${") and api_key.endswith("}"):
             env_var = api_key[2:-1]
             api_key = os.environ.get(env_var, "")
-        # If still no key, try env vars
         if not api_key:
             env_keys = {
                 "deepseek": "DEEPSEEK_API_KEY",
@@ -108,12 +105,138 @@ def cli(ctx, model: Optional[str], provider: Optional[str], api_key: str, verbos
             env_var = env_keys.get(resolved_provider, "OPENAI_API_KEY")
             api_key = os.environ.get(env_var, "")
 
-    if verbose:
-        click.echo(f"🔧 Provider: {resolved_provider} | Model: {resolved_model} | Key set: {'✓' if api_key else '✗'}", err=True)
-
     ctx.obj["_provider_name"] = resolved_provider
     ctx.obj["_model_name"] = resolved_model
+    ctx.obj["_verbose"] = verbose
     ctx.obj["provider"] = _get_provider(resolved_model, api_key)
+
+    # If no subcommand was given, show the TUI
+    if ctx.invoked_subcommand is None:
+        _show_tui(ctx.obj)
+
+
+def _show_tui(obj: dict):
+    """Full-screen TUI: header, agents by category, question dialog."""
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    import questionary
+
+    console = Console()
+    provider = obj["provider"]
+    provider_name = obj["_provider_name"]
+    model_name = obj["_model_name"]
+
+    key_status = "✓" if hasattr(provider, "_api_key") and provider._api_key else "✗"
+
+    while True:
+        console.clear()
+        console.print()
+
+        # ── HEADER ──
+        console.print(Panel.fit(
+            "[bold cyan]🔮  PRISM-DECIDE[/]\n\n"
+            "[white]Sistema multi-agente de deliberación para tomar mejores decisiones.[/]\n"
+            "[white]Cada decisión es analizada por múltiples agentes de IA expertos en[/]\n"
+            "[white]distintas áreas (financiera, riesgo, crecimiento, estilo de vida, emocional).[/]\n\n"
+            f"[dim]⚡ {provider_name}/{model_name}  ·  API key: {key_status}[/]",
+            border_style="cyan",
+            padding=(1, 4),
+        ))
+        console.print()
+
+        # ── AGENTS BY CATEGORY ──
+        console.print("  [bold yellow]🧠  AGENTES DISPONIBLES POR CATEGORÍA[/]")
+        console.print()
+
+        from .categories.registry import list_categories, CATEGORY_AGENTS
+        from .core.types import CATEGORY_LABELS
+        from .agents import AGENT_MAP
+
+        # Build category → agents display
+        cat_table = Table(box=None, padding=(0, 2))
+        cat_table.add_column("", width=20)
+        cat_table.add_column("", width=50)
+
+        for cat, agent_ids in CATEGORY_AGENTS.items():
+            label = CATEGORY_LABELS.get(cat, cat.value)
+            agents_str = "  ".join(
+                f"{AGENT_MAP[aid].agent_icon} {AGENT_MAP[aid].agent_label}"
+                for aid in agent_ids if aid in AGENT_MAP
+            )
+            cat_table.add_row(f"  {label}", agents_str)
+
+        console.print(cat_table)
+        console.print()
+
+        # ── QUESTION INPUT ──
+        console.print(Panel(
+            "[yellow]💬[/]  [bold]¿Qué decisión quieres analizar?[/]\n\n"
+            "[dim]Escribe tu situación o pregunta, por ejemplo:[/]\n"
+            "[dim]\"¿Debería aceptar la oferta de trabajo en BCTecnología?\"[/]",
+            border_style="yellow",
+            padding=(1, 3),
+        ))
+        console.print()
+
+        decision = questionary.text(
+            "",
+            qmark="▸",
+            instruction="",
+            style=questionary.Style([
+                ("qmark", "fg:cyan bold"),
+                ("text", "fg:white"),
+            ]),
+        ).ask()
+
+        if decision is None:
+            console.print("\n[red]✗[/]  Hasta luego!\n")
+            return
+
+        decision = decision.strip()
+        if not decision:
+            continue
+
+        # ── DELIBERATION ──
+        console.clear()
+        console.print()
+        console.print(Panel.fit(
+            "[bold cyan]🔮  ANALIZANDO…[/]\n\n"
+            f"[white]{decision}[/]",
+            border_style="cyan",
+            padding=(1, 4),
+        ))
+        console.print()
+
+        from .core.council import Council
+        from .core.synthesizer import Synthesizer
+
+        council = Council(provider)
+        syn = Synthesizer()
+
+        import time
+        start = time.time()
+
+        with console.status("  [dim]consultando agentes…[/]", spinner="dots"):
+            matrix = council.deliberate(decision)
+
+        elapsed = time.time() - start
+
+        console.print()
+        syn.format_matrix(matrix)
+        console.print(f"[dim]{provider_name}/{model_name}  ·  ⏱ {elapsed:.1f}s[/]")
+        console.print()
+
+        # ── CONTINUE OR EXIT ──
+        again = questionary.confirm(
+            "¿Analizar otra decisión?",
+            default=True,
+            qmark="▸",
+        ).ask()
+
+        if not again:
+            console.print("\n[cyan]✗[/]  Hasta luego!\n")
+            return
 
 
 @cli.command()
@@ -143,15 +266,20 @@ def decide(ctx, decision: Optional[str], options, agents, json_output):
     explicit_options = list(options) if options else None
 
     from rich.console import Console
+    from rich.panel import Panel
     console = Console()
 
     import time
     start = time.time()
 
-    console.print(f"[bold cyan]prism-decide[/] [dim]· deliberating[/]")
+    console.print(Panel.fit(
+        f"[bold cyan]🔮  PRISM-DECIDE[/]\n[white]{decision}[/]",
+        border_style="cyan",
+        padding=(1, 4),
+    ))
     console.print()
 
-    with console.status("  [dim]consulting agents…[/]", spinner="dots"):
+    with console.status("  [dim]consultando agentes…[/]", spinner="dots"):
         matrix = council.deliberate(decision, agent_ids=agent_ids, options=explicit_options)
 
     elapsed = time.time() - start

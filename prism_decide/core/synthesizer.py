@@ -24,12 +24,11 @@ class Synthesizer:
         )
 
     def format_matrix(self, matrix: DecisionMatrix) -> str:
-        """Format the decision matrix with a clean, professional terminal style."""
+        """Format the decision matrix as visual panels."""
         from rich.console import Console
         from rich.table import Table
-        from rich.box import SIMPLE, MINIMAL
-        from rich.text import Text
-        from rich import box as rich_box
+        from rich.panel import Panel
+        from rich.box import HEAVY, ROUNDED
 
         console = Console()
 
@@ -37,33 +36,41 @@ class Synthesizer:
             console.print("[yellow]No hay datos para mostrar.[/]")
             return ""
 
-        # ── Header ──
+        # ── Decision Header ──
         decision_text = matrix.decision_text[:80]
         if len(matrix.decision_text) > 80:
             decision_text += "…"
-        console.print(f"[bold cyan]▸ {decision_text}[/]")
+
+        console.print(Panel(
+            f"[bold cyan]{decision_text}[/]",
+            title="🔮  DECISIÓN",
+            border_style="cyan",
+            padding=(1, 3),
+        ))
         console.print()
 
         # ── Category ──
         from .types import CATEGORY_LABELS
         cat_label = CATEGORY_LABELS.get(matrix.category, matrix.category.value)
-        console.print(f"  [dim]categoría[/]  [bold]{cat_label}[/]")
+        console.print(f"  [dim]📂 Categoría:[/] [bold]{cat_label}[/]")
+        console.print()
 
-        # ── Scores Table (clean, no heavy borders) ──
+        # ── Scores Table ──
         table = Table(
-            box=SIMPLE,
-            show_header=True,
-            header_style="bold white",
-            border_style="bright_black",
+            title="🏆  MATRIZ DE PUNTUACIÓN",
+            box=HEAVY,
+            title_style="bold cyan",
+            border_style="cyan",
+            header_style="bold yellow",
             padding=(0, 2),
         )
 
-        table.add_column("", width=16)
+        table.add_column("Agente", style="bold white", width=16)
         for opt in matrix.options:
             table.add_column(opt, justify="center", width=12)
 
         for v in matrix.verdicts:
-            row = [f"  {v.agent_icon} {v.agent_label}"]
+            row = [f"{v.agent_icon} {v.agent_label}"]
             for opt in matrix.options:
                 score = v.scores.get(opt, 0)
                 if score >= 8:
@@ -77,14 +84,9 @@ class Synthesizer:
                 row.append(f"[{style}]{score}[/]")
             table.add_row(*row)
 
-        # Totals row with separator
+        # Totals row
         totals = matrix.totals
-        total_row = [""]
-        for _ in matrix.options:
-            total_row.append("─" * 4)
-        table.add_row(*total_row, style="bright_black")
-
-        total_row2 = [f"  [bold]TOTAL[/]"]
+        total_row = ["🏆 TOTAL"]
         max_score = len(matrix.verdicts) * 10
         for opt in matrix.options:
             score = totals.get(opt, 0)
@@ -95,32 +97,39 @@ class Synthesizer:
                 style = "bold yellow"
             else:
                 style = "bold red"
-            total_row2.append(f"[{style}]{score}[/]")
-        table.add_row(*total_row2, style="bold")
+            total_row.append(f"[{style}]{score}[/]")
+        table.add_row(*total_row, style="bold")
 
-        console.print()
         console.print(table)
         console.print()
 
         # ── Recommendation ──
         rec = matrix.get_recommendation()
-        console.print(f"  [bold green]→[/] [bold]{rec}[/]")
+        console.print(Panel(
+            f"[bold green]{rec}[/]",
+            title="🎯  RECOMENDACIÓN",
+            border_style="green",
+            padding=(1, 3),
+        ))
         console.print()
 
-        # ── Agent Reasoning (compact) ──
+        # ── Agent Reasoning ──
         for v in matrix.verdicts:
             scores = list(v.scores.values())
             avg = sum(scores) / len(scores) if scores else 0
             if avg >= 7:
-                badge = "[green]●[/]"
+                badge = "[bold green]👍[/]"
             elif avg >= 4:
-                badge = "[yellow]●[/]"
+                badge = "[bold yellow]🤷[/]"
             else:
-                badge = "[red]●[/]"
+                badge = "[bold red]👎[/]"
 
-            score_str = "  ".join(f"{opt}: [bold]{v.scores.get(opt, '?')}[/]" for opt in matrix.options)
-            console.print(f"  {badge} [bold]{v.agent_icon} {v.agent_label}[/]  [dim]{score_str}[/]")
-            console.print(f"    [dim]{v.reasoning}[/]")
+            score_line = "  ".join(f"{opt}: [bold]{v.scores.get(opt, '?')}[/]" for opt in matrix.options)
+            console.print(Panel(
+                f"{badge}  [bold]{v.agent_icon} {v.agent_label}[/]   [dim]{score_line}[/]\n\n[dim]{v.reasoning}[/]",
+                border_style="blue",
+                padding=(1, 2),
+            ))
             console.print()
 
         return ""
