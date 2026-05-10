@@ -1,0 +1,20 @@
+# ─────────────────────────────────────────────
+# Prism-Decide Configuration
+# ─────────────────────────────────────────────
+# Place this file at: ~/.config/prism-decide/config.yaml
+
+provider:
+  default: openai        # or "anthropic"
+  
+  openai:
+    model: gpt-4o-mini
+    api_key: ${OPENAI_API_KEY}
+  
+  anthropic:
+    model: claude-sonnet-4-20250514
+    api_key: ${ANTHROPIC_API_KEY}
+
+behavior:
+  parallel_agents: true      # Run agents concurrently
+  show_reasoning: true        # Show full agent reasoning
+  color_theme: "default"      # Rich theme
