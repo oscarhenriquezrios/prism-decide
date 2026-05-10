@@ -112,6 +112,8 @@ def cli(ctx, model: Optional[str], provider: Optional[str], api_key: str, verbos
     if verbose:
         click.echo(f"🔧 Provider: {resolved_provider} | Model: {resolved_model} | Key set: {'✓' if api_key else '✗'}", err=True)
 
+    ctx.obj["_provider_name"] = resolved_provider
+    ctx.obj["_model_name"] = resolved_model
     ctx.obj["provider"] = _get_provider(resolved_model, api_key)
 
 
@@ -146,6 +148,9 @@ def decide(ctx, decision: Optional[str], options, agents, json_output):
     click.echo("━" * 40)
     click.echo()
 
+    import time
+    start = time.time()
+
     with click.progressbar(
         length=1,
         label="🧠 Reuniendo el consejo...",
@@ -154,6 +159,8 @@ def decide(ctx, decision: Optional[str], options, agents, json_output):
     ) as bar:
         matrix = council.deliberate(decision, agent_ids=agent_ids, options=explicit_options)
         bar.update(1)
+
+    elapsed = time.time() - start
 
     click.echo()
     click.echo(f"📂 Categoría: {CATEGORY_LABELS.get(matrix.category, matrix.category.value)}")
@@ -164,6 +171,10 @@ def decide(ctx, decision: Optional[str], options, agents, json_output):
     else:
         click.echo(syn.format_matrix(matrix))
 
+    click.echo()
+    model_name = ctx.obj.get("_model_name", "")
+    provider_name = ctx.obj.get("_provider_name", "")
+    click.echo(f"🤖 {provider_name}/{model_name} · ⏱ {elapsed:.1f}s")
     click.echo()
 
 
