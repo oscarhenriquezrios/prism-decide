@@ -12,7 +12,6 @@ from .categories.registry import list_categories
 from .config import load_config
 from .core.council import Council
 from .core.synthesizer import Synthesizer
-from .core.types import CATEGORY_LABELS, DecisionCategory
 from .providers.openai import OpenAIProvider
 
 
@@ -143,39 +142,26 @@ def decide(ctx, decision: Optional[str], options, agents, json_output):
     agent_ids = list(agents) if agents else None
     explicit_options = list(options) if options else None
 
-    click.echo()
-    click.echo("🔮  PRISM-DECIDE")
-    click.echo("━" * 40)
-    click.echo()
+    from rich.console import Console
+    console = Console()
 
     import time
     start = time.time()
 
-    with click.progressbar(
-        length=1,
-        label="🧠 Reuniendo el consejo...",
-        show_eta=False,
-        show_percent=False,
-    ) as bar:
+    with console.status("🧠  Reuniendo el consejo de agentes…", spinner="dots"):
         matrix = council.deliberate(decision, agent_ids=agent_ids, options=explicit_options)
-        bar.update(1)
 
     elapsed = time.time() - start
-
-    click.echo()
-    click.echo(f"📂 Categoría: {CATEGORY_LABELS.get(matrix.category, matrix.category.value)}")
-    click.echo()
 
     if json_output:
         click.echo(syn.format_json(matrix))
     else:
-        click.echo(syn.format_matrix(matrix))
+        syn.format_matrix(matrix)
 
-    click.echo()
     model_name = ctx.obj.get("_model_name", "")
     provider_name = ctx.obj.get("_provider_name", "")
-    click.echo(f"🤖 {provider_name}/{model_name} · ⏱ {elapsed:.1f}s")
-    click.echo()
+    console.print(f"[dim]🤖 {provider_name}/{model_name}  ·  ⏱ {elapsed:.1f}s[/]")
+    console.print()
 
 
 @cli.command("list-agents")
@@ -193,75 +179,222 @@ def setup(ctx):
     """🔧 Interactive setup — configure providers, models, and preferences."""
     import os
     from pathlib import Path
+    import questionary
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.columns import Columns
+    from rich.text import Text
 
+    console = Console()
     config_dir = Path.home() / ".config" / "prism-decide"
     config_path = config_dir / "config.yaml"
 
-    click.echo()
-    click.echo("╔══════════════════════════════════════╗")
-    click.echo("║   🔮  PRISM-DECIDE SETUP WIZARD      ║")
-    click.echo("╚══════════════════════════════════════╝")
-    click.echo()
+    console.clear()
+    console.print()
+    console.print(Panel.fit(
+        "[bold cyan]🔮  PRISM-DECIDE  ⚡  SETUP WIZARD[/]",
+        border_style="cyan",
+        padding=(1, 6),
+    ))
+    console.print()
 
-    # --- Step 1: Default provider ---
-    click.echo("📡  PROVEEDOR PRINCIPAL")
-    click.echo()
-    provider = click.prompt(
-        "¿Qué proveedor de LLM quieres usar por defecto?",
-        type=click.Choice(["openai", "deepseek", "openrouter", "anthropic", "ollama"], case_sensitive=False),
-        default="deepseek",
-        show_choices=True,
-    )
+    # ── Step 1: Provider ──
+    console.print("[bold yellow]📡  PROVEEDOR DE IA[/]\n")
 
+    provider = questionary.select(
+        "¿Qué proveedor de LLM quieres usar?",
+        choices=[
+            questionary.Choice(
+                title="🧊  DeepSeek     — Barato, rápido, modelo chino potente",
+                value="deepseek",
+            ),
+            questionary.Choice(
+                title="🟢  OpenAI       — GPT-4o, el estándar de la industria",
+                value="openai",
+            ),
+            questionary.Choice(
+                title="🟣  OpenRouter   — Gateway multi-modelo (DeepSeek, GPT, Claude…)",
+                value="openrouter",
+            ),
+            questionary.Choice(
+                title="🔴  Anthropic    — Claude Sonnet, énfasis en seguridad",
+                value="anthropic",
+            ),
+            questionary.Choice(
+                title="🟠  Ollama       — Modelos locales gratuitos (llama3, mistral…)",
+                value="ollama",
+            ),
+        ],
+        qmark="▸",
+        style=questionary.Style([
+            ("qmark", "fg:cyan bold"),
+            ("question", "fg:white bold"),
+            ("answer", "fg:cyan bold"),
+            ("pointer", "fg:cyan bold"),
+            ("highlighted", "fg:cyan bold"),
+            ("selected", "fg:green bold"),
+        ]),
+    ).ask()
+
+    if provider is None:
+        console.print("[red]Setup cancelado.[/]")
+        return
+
+    # Provider config table
     provider_configs = {
-        "openai": {"model": "gpt-4o-mini", "base_url": "", "env_key": "OPENAI_API_KEY"},
-        "deepseek": {"model": "deepseek-chat", "base_url": "https://api.deepseek.com/v1", "env_key": "DEEPSEEK_API_KEY"},
-        "openrouter": {"model": "openai/deepseek-chat", "base_url": "https://openrouter.ai/api/v1", "env_key": "OPENROUTER_API_KEY"},
-        "anthropic": {"model": "claude-sonnet-4-20250514", "base_url": "", "env_key": "ANTHROPIC_API_KEY"},
-        "ollama": {"model": "llama3", "base_url": "http://localhost:11434/v1", "env_key": ""},
+        "deepseek": {
+            "model": "deepseek-chat",
+            "models": ["deepseek-chat"],
+            "base_url": "https://api.deepseek.com/v1",
+            "env_key": "DEEPSEEK_API_KEY",
+            "color": "cyan",
+        },
+        "openai": {
+            "model": "gpt-4o-mini",
+            "models": ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
+            "base_url": "",
+            "env_key": "OPENAI_API_KEY",
+            "color": "green",
+        },
+        "openrouter": {
+            "model": "openai/deepseek-chat",
+            "models": ["openai/deepseek-chat", "anthropic/claude-sonnet-4", "openai/gpt-4o", "deepseek/deepseek-chat"],
+            "base_url": "https://openrouter.ai/api/v1",
+            "env_key": "OPENROUTER_API_KEY",
+            "color": "magenta",
+        },
+        "anthropic": {
+            "model": "claude-sonnet-4-20250514",
+            "models": ["claude-sonnet-4-20250514", "claude-haiku-3-5", "claude-opus-4"],
+            "base_url": "",
+            "env_key": "ANTHROPIC_API_KEY",
+            "color": "red",
+        },
+        "ollama": {
+            "model": "llama3",
+            "models": ["llama3", "llama3:70b", "mistral", "mixtral", "codellama"],
+            "base_url": "http://localhost:11434/v1",
+            "env_key": "",
+            "color": "orange3",
+        },
     }
 
     pconf = provider_configs[provider]
-    click.echo(f"\n  → Modelo sugerido: {pconf['model']}")
-    if provider != "ollama":
-        model = click.prompt("  Modelo a usar", default=pconf["model"])
-    else:
-        model = click.prompt("  Modelo Ollama (ej: llama3, mistral)", default=pconf["model"])
 
-    # --- Step 2: API Key ---
-    click.echo()
+    # ── Step 2: Model ──
+    console.print()
+    console.print("[bold yellow]🎯  MODELO[/]\n")
+
+    if provider == "ollama":
+        model = questionary.text(
+            "Modelo Ollama (ej: llama3, mistral, mixtral):",
+            default=pconf["model"],
+            qmark="▸",
+            style=questionary.Style([("qmark", "fg:cyan bold"), ("question", "fg:white bold")]),
+        ).ask()
+    else:
+        model = questionary.select(
+            "Selecciona el modelo:",
+            choices=pconf["models"],
+            default=pconf["model"],
+            qmark="▸",
+            style=questionary.Style([
+                ("qmark", "fg:cyan bold"),
+                ("question", "fg:white bold"),
+                ("pointer", "fg:cyan bold"),
+                ("highlighted", "fg:cyan bold"),
+            ]),
+        ).ask()
+
+    if model is None:
+        console.print("[red]Setup cancelado.[/]")
+        return
+
+    # ── Step 3: API Key ──
+    console.print()
+    console.print("[bold yellow]🔑  API KEY[/]\n")
+
     if provider == "ollama":
         api_key = ""
-        click.echo("  ✅ Ollama corre local — no necesita API key")
+        console.print("  [green]✅[/] Ollama corre localmente — no necesita API key")
     else:
         env_hint = pconf["env_key"]
         existing = os.environ.get(env_hint, "")
         if existing:
-            click.echo(f"  ℹ️  Variable {env_hint} ya está configurada en el entorno")
-        key = click.prompt(
-            f"  API Key (se guardará en ~/.config/prism-decide/config.yaml)",
-            default="",
-            hide_input=True,
-        )
-        api_key = key or f"${{{env_hint}}}"
+            console.print(f"  [blue]ℹ️[/] Variable [bold]{env_hint}[/] ya está en el entorno")
+        use_env = questionary.confirm(
+            "¿Usar variable de entorno?",
+            default=bool(existing),
+            qmark="▸",
+        ).ask() if not existing else True
 
-    # --- Step 3: Behavior defaults ---
-    click.echo()
-    click.echo("⚙️  COMPORTAMIENTO")
-    click.echo()
-    parallel = click.confirm("  ¿Ejecutar agentes en paralelo?", default=True)
-    reasoning = click.confirm("  ¿Mostrar razonamiento detallado de cada agente?", default=True)
+        if use_env is None:
+            console.print("[red]Setup cancelado.[/]")
+            return
 
-    click.echo()
-    click.echo("🎨  APARIENCIA")
-    theme = click.prompt(
-        "  Tema de color",
-        type=click.Choice(["default", "dark", "minimal", "high-contrast"], case_sensitive=False),
+        if use_env:
+            api_key = f"${{{env_hint}}}"
+        else:
+            key = questionary.password(
+                "Pega tu API key:",
+                qmark="▸",
+                style=questionary.Style([("qmark", "fg:cyan bold"), ("question", "fg:white bold")]),
+            ).ask()
+            if key is None:
+                console.print("[red]Setup cancelado.[/]")
+                return
+            api_key = key
+
+    # ── Step 4: Behavior ──
+    console.print()
+    console.print("[bold yellow]⚙️  COMPORTAMIENTO[/]\n")
+
+    parallel = questionary.confirm(
+        "¿Ejecutar agentes en paralelo? (más rápido)",
+        default=True,
+        qmark="▸",
+    ).ask()
+
+    if parallel is None:
+        console.print("[red]Setup cancelado.[/]")
+        return
+
+    reasoning = questionary.confirm(
+        "¿Mostrar razonamiento detallado de cada agente?",
+        default=True,
+        qmark="▸",
+    ).ask()
+
+    if reasoning is None:
+        console.print("[red]Setup cancelado.[/]")
+        return
+
+    console.print()
+    console.print("[bold yellow]🎨  APARIENCIA[/]\n")
+
+    theme = questionary.select(
+        "Tema de color:",
+        choices=[
+            questionary.Choice(title="🌙  Default     — Claro y profesional", value="default"),
+            questionary.Choice(title="🌚  Dark        — Modo oscuro elegante", value="dark"),
+            questionary.Choice(title="📄  Minimal     — Sin colores, solo texto", value="minimal"),
+            questionary.Choice(title="🌈  High-Contrast — Accesible, colores vibrantes", value="high-contrast"),
+        ],
         default="default",
-        show_choices=True,
-    )
+        qmark="▸",
+        style=questionary.Style([
+            ("qmark", "fg:cyan bold"),
+            ("question", "fg:white bold"),
+            ("pointer", "fg:cyan bold"),
+            ("highlighted", "fg:cyan bold"),
+        ]),
+    ).ask()
 
-    # --- Build config ---
+    if theme is None:
+        console.print("[red]Setup cancelado.[/]")
+        return
+
+    # ── Build config ──
     config = {
         "provider": {
             "default": provider,
@@ -283,27 +416,40 @@ def setup(ctx):
     if pconf["base_url"] and provider != "openai":
         config["provider"][provider]["base_url"] = pconf["base_url"]
 
-    # --- Write config ---
+    # ── Write config ──
     config_dir.mkdir(parents=True, exist_ok=True)
     import yaml
     with open(config_path, "w") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
-    click.echo()
-    click.echo("━" * 40)
-    click.echo(f"✅  Configuración guardada en:")
-    click.echo(f"   {config_path}")
-    click.echo()
-    click.echo("📋  Resumen:")
-    click.echo(f"   Proveedor:    {provider}")
-    click.echo(f"   Modelo:       {model}")
-    click.echo(f"   Paralelo:     {'Sí' if parallel else 'No'}")
-    click.echo(f"   Razonamiento: {'Sí' if reasoning else 'No'}")
-    click.echo(f"   Tema:         {theme}")
-    click.echo()
-    click.echo("▶️  Ahora puedes ejecutar:")
-    click.echo(f"   prism-decide decide \"¿Debería...\"")
-    click.echo()
+    console.clear()
+    console.print()
+    console.print(Panel.fit(
+        "[bold green]✅  CONFIGURACIÓN COMPLETADA[/]",
+        border_style="green",
+        padding=(1, 4),
+    ))
+    console.print()
+
+    # Summary table
+    from rich.table import Table
+    summary = Table(show_header=False, box=None, padding=(0, 2))
+    summary.add_column(style="bold yellow", width=18)
+    summary.add_column(style="white")
+
+    provider_meta = provider_configs[provider]
+    summary.add_row("📡 Proveedor", f"[{provider_meta['color']}]{provider}[/]")
+    summary.add_row("🎯 Modelo", f"[{provider_meta['color']}]{model}[/]")
+    summary.add_row("⚙️  Paralelo", "✅ Sí" if parallel else "❌ No")
+    summary.add_row("📖 Razonamiento", "✅ Sí" if reasoning else "❌ No")
+    summary.add_row("🎨 Tema", theme)
+
+    console.print(summary)
+    console.print()
+    console.print(f"  [dim]Guardado en: {config_path}[/]")
+    console.print()
+    console.print("  [cyan]▶[/]  Ahora ejecuta:  [bold]prism-decide decide \"¿Debería…\"[/]")
+    console.print()
 
 
 @cli.command("list-categories")
