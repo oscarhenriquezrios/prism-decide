@@ -4,7 +4,7 @@
 # Place this file at: ~/.config/prism-decide/config.yaml
 
 provider:
-  default: openai        # or "anthropic"
+  default: openai        # or "anthropic", "deepseek"
   
   openai:
     model: gpt-4o-mini
@@ -14,7 +14,15 @@ provider:
     model: claude-sonnet-4-20250514
     api_key: ${ANTHROPIC_API_KEY}
 
+# DeepSeek (via direct API)
+#   export DEEPSEEK_API_KEY="sk-..."
+#   prism-decide --model deepseek-chat decide "..."
+#
+# DeepSeek (via OpenRouter)
+#   export OPENAI_API_KEY="sk-or-..."
+#   prism-decide --model openai/deepseek-chat decide "..."
+
 behavior:
-  parallel_agents: true      # Run agents concurrently
-  show_reasoning: true        # Show full agent reasoning
-  color_theme: "default"      # Rich theme
+  parallel_agents: true       # Run agents concurrently
+  show_reasoning: true         # Show full agent reasoning
+  color_theme: "default"       # Rich theme

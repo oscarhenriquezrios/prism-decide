@@ -34,21 +34,29 @@ class BaseAgent(ABC):
         system = self.get_system_prompt()
         prompt = self.get_user_prompt(decision, options)
 
-        raw = self.provider.complete_json(prompt, system=system, temperature=0.5)
+        try:
+            raw = self.provider.complete_json(prompt, system=system, temperature=0.5)
 
-        scores = {}
-        for entry in raw.get("scores", []):
-            option = entry.get("option", "")
-            score = int(entry.get("score", 5))
-            scores[option] = max(1, min(10, score))
+            scores = {}
+            for entry in raw.get("scores", []):
+                option = entry.get("option", "")
+                score = int(entry.get("score", 5))
+                scores[option] = max(1, min(10, score))
 
-        # If scores dict keys don't match options exactly, map by index
-        if not scores or set(scores.keys()) != set(options):
-            for i, opt in enumerate(options):
-                if i < len(raw.get("scores", [])):
-                    scores[opt] = max(1, min(10, raw["scores"][i].get("score", 5)))
-                else:
-                    scores[opt] = 5
+            # Map by index if keys don't match
+            if not scores or set(scores.keys()) != set(options):
+                for i, opt in enumerate(options):
+                    if i < len(raw.get("scores", [])):
+                        scores[opt] = max(1, min(10, raw["scores"][i].get("score", 5)))
+                    else:
+                        scores[opt] = 5
+        except Exception as e:
+            scores = {opt: 5 for opt in options}
+            raw = {
+                "reasoning": f"Error al obtener respuesta del LLM: {e}",
+                "key_factors": ["Error en conexión con proveedor"],
+                "recommendation": "No se pudo evaluar.",
+            }
 
         return AgentVerdict(
             agent_id=self.agent_id,

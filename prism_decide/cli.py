@@ -18,17 +18,23 @@ from .providers.openai import OpenAIProvider
 def _get_provider(model: str, api_key: str):
     """Get the appropriate LLM provider."""
     if not api_key:
-        # Try to read from env
         import os
-        api_key = os.environ.get("OPENAI_API_KEY", "")
+        api_key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("DEEPSEEK_API_KEY", "")
 
-    if model.startswith("gpt") or "openai" in model or not model:
+    model_lower = model.lower()
+
+    if "deepseek" in model_lower:
+        return OpenAIProvider(model=model or "deepseek-chat", api_key=api_key,
+                              base_url="https://api.deepseek.com/v1")
+    elif "openrouter" in model_lower or model.startswith("openai/"):
+        return OpenAIProvider(model=model, api_key=api_key,
+                              base_url="https://openrouter.ai/api/v1")
+    elif model.startswith("gpt") or "openai" in model or not model:
         return OpenAIProvider(model=model or "gpt-4o-mini", api_key=api_key)
-    elif model.startswith("claude") or "anthropic" in model:
+    elif "claude" in model_lower or "anthropic" in model_lower:
         from .providers.anthropic import AnthropicProvider
         return AnthropicProvider(model=model, api_key=api_key)
     else:
-        # Default to OpenAI-compatible
         return OpenAIProvider(model=model, api_key=api_key)
 
 
