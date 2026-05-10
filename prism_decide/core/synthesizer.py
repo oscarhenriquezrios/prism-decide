@@ -119,8 +119,6 @@ class Synthesizer:
         console.print()
         for v in matrix.verdicts:
             reasoning = v.reasoning
-            if len(reasoning) > 200:
-                reasoning = reasoning[:200] + "…"
             # Color based on top score
             scores = list(v.scores.values())
             avg = sum(scores) / len(scores) if scores else 0

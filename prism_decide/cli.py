@@ -80,8 +80,8 @@ def cli(ctx, model: Optional[str], provider: Optional[str], api_key: str, verbos
         if not resolved_model:
             default_models = {
                 "openai": "gpt-4o-mini",
-                "deepseek": "deepseek-chat",
-                "openrouter": "openai/deepseek-chat",
+                "deepseek": "deepseek-v4-flash",
+                "openrouter": "deepseek/deepseek-v4-flash",
                 "anthropic": "claude-sonnet-4-20250514",
                 "ollama": "llama3",
             }
@@ -243,8 +243,13 @@ def setup(ctx):
     # Provider config table
     provider_configs = {
         "deepseek": {
-            "model": "deepseek-chat",
-            "models": ["deepseek-chat"],
+            "model": "deepseek-v4-flash",
+            "models": [
+                "deepseek-v4-flash",
+                "deepseek-v4-pro",
+                "deepseek-chat (obsoleto 24/07/2026)",
+                "deepseek-reasoner (obsoleto 24/07/2026)",
+            ],
             "base_url": "https://api.deepseek.com/v1",
             "env_key": "DEEPSEEK_API_KEY",
             "color": "cyan",
@@ -257,8 +262,14 @@ def setup(ctx):
             "color": "green",
         },
         "openrouter": {
-            "model": "openai/deepseek-chat",
-            "models": ["openai/deepseek-chat", "anthropic/claude-sonnet-4", "openai/gpt-4o", "deepseek/deepseek-chat"],
+            "model": "deepseek/deepseek-v4-flash",
+            "models": [
+                "deepseek/deepseek-v4-flash",
+                "deepseek/deepseek-v4-pro",
+                "anthropic/claude-sonnet-4",
+                "openai/gpt-4o",
+                "deepseek/deepseek-chat (obsoleto 24/07/2026)",
+            ],
             "base_url": "https://openrouter.ai/api/v1",
             "env_key": "OPENROUTER_API_KEY",
             "color": "magenta",
@@ -293,9 +304,20 @@ def setup(ctx):
             style=questionary.Style([("qmark", "fg:cyan bold"), ("question", "fg:white bold")]),
         ).ask()
     else:
+        model_choices = []
+        for m in pconf["models"]:
+            if "obsoleto" in m:
+                clean_name = m.split(" (")[0]
+                display = f"  {clean_name}  —  ⚠️  OBSOLETO (24/07/2026)"
+            else:
+                clean_name = m
+                display = f"  {clean_name}"
+            model_choices.append(
+                questionary.Choice(title=display, value=clean_name)
+            )
         model = questionary.select(
             "Selecciona el modelo:",
-            choices=pconf["models"],
+            choices=model_choices,
             default=pconf["model"],
             qmark="▸",
             style=questionary.Style([
