@@ -88,17 +88,26 @@ def cli(ctx, model: Optional[str], provider: Optional[str], api_key: str, verbos
             }
             resolved_model = default_models.get(resolved_provider, "gpt-4o-mini")
 
-    # Resolve API key
+    # Resolve API key — check config file first, then env vars
     if not api_key:
         import os
-        env_keys = {
-            "deepseek": "DEEPSEEK_API_KEY",
-            "openai": "OPENAI_API_KEY",
-            "openrouter": "OPENROUTER_API_KEY",
-            "anthropic": "ANTHROPIC_API_KEY",
-        }
-        env_var = env_keys.get(resolved_provider, "OPENAI_API_KEY")
-        api_key = os.environ.get(env_var, "")
+        # Try to get key from config file
+        provider_cfg = cfg.get("provider", {}).get(resolved_provider, {})
+        api_key = provider_cfg.get("api_key", "")
+        # If it's an env var reference like ${DEEPSEEK_API_KEY}, resolve it
+        if api_key.startswith("${") and api_key.endswith("}"):
+            env_var = api_key[2:-1]
+            api_key = os.environ.get(env_var, "")
+        # If still no key, try env vars
+        if not api_key:
+            env_keys = {
+                "deepseek": "DEEPSEEK_API_KEY",
+                "openai": "OPENAI_API_KEY",
+                "openrouter": "OPENROUTER_API_KEY",
+                "anthropic": "ANTHROPIC_API_KEY",
+            }
+            env_var = env_keys.get(resolved_provider, "OPENAI_API_KEY")
+            api_key = os.environ.get(env_var, "")
 
     if verbose:
         click.echo(f"🔧 Provider: {resolved_provider} | Model: {resolved_model} | Key set: {'✓' if api_key else '✗'}", err=True)
