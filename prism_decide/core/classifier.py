@@ -12,12 +12,12 @@ CATEGORY_KEYWORDS: dict[DecisionCategory, list[str]] = {
     DecisionCategory.CAREER: [
         "trabajo", "cambio", "renuncia", "empleo", "carrera", "job",
         "career", "resign", "offer", "salary", "salario", "pega",
-        "scotiabank", "bctecnología", "chamba", "trabajar",
+        "chamba", "trabajar",
     ],
     DecisionCategory.BUSINESS: [
         "emprender", "negocio", "inversión", "startup", "business",
         "invest", "launch", "producto", "empresa", "socio",
-        "kipioapp", "bovedax", "cliente", "factoring",
+        "cliente", "factoring",
     ],
     DecisionCategory.PERSONAL: [
         "pareja", "relación", "mudanza", "familia", "relationship",
