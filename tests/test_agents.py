@@ -1,7 +1,9 @@
 """Tests for all 12 agents — verify prompts are valid and return expected JSON structure."""
 
 import json
+
 import pytest
+
 from prism_decide.agents import AGENT_MAP, list_available_agents
 
 

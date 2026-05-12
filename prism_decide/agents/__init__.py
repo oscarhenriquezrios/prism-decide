@@ -2,18 +2,18 @@
 
 from ..providers.base import BaseProvider
 from .base import BaseAgent
-from .financial import FinancialAgent
-from .risk import RiskAgent
-from .growth import GrowthAgent
-from .lifestyle import LifestyleAgent
 from .emotional import EmotionalAgent
+from .ethical import EthicalAgent
+from .financial import FinancialAgent
+from .foresight import ForesightAgent
+from .growth import GrowthAgent
+from .health import HealthAgent
+from .lifestyle import LifestyleAgent
 from .market import MarketAgent
 from .operational import OperationalAgent
-from .social import SocialAgent
-from .foresight import ForesightAgent
-from .health import HealthAgent
-from .ethical import EthicalAgent
 from .rational import RationalAgent
+from .risk import RiskAgent
+from .social import SocialAgent
 
 AGENT_CLASSES: list[type[BaseAgent]] = [
     FinancialAgent,

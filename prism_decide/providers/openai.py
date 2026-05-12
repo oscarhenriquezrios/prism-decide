@@ -10,7 +10,6 @@ from httpx import Client, Timeout
 
 from .base import BaseProvider
 
-
 # Providers that support native response_format (JSON mode)
 JSON_MODE_SUPPORTED = {"openai", "openrouter"}
 

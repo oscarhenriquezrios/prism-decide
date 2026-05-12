@@ -25,10 +25,10 @@ class Synthesizer:
 
     def format_matrix(self, matrix: DecisionMatrix) -> str:
         """Format the decision matrix as visual panels."""
+        from rich.box import HEAVY
         from rich.console import Console
-        from rich.table import Table
         from rich.panel import Panel
-        from rich.box import HEAVY, ROUNDED
+        from rich.table import Table
 
         console = Console()
 

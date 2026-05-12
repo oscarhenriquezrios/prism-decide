@@ -117,10 +117,10 @@ def cli(ctx, model: Optional[str], provider: Optional[str], api_key: str, verbos
 
 def _show_tui(obj: dict):
     """Full-screen TUI: header, agents by category, question dialog."""
+    import questionary
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    import questionary
 
     console = Console()
     provider = obj["provider"]
@@ -167,9 +167,9 @@ def _show_tui(obj: dict):
         console.print("  [bold yellow]🧠  AGENTES DISPONIBLES POR CATEGORÍA[/]")
         console.print()
 
-        from .categories.registry import list_categories, CATEGORY_AGENTS
-        from .core.types import CATEGORY_LABELS
         from .agents import AGENT_MAP
+        from .categories.registry import CATEGORY_AGENTS
+        from .core.types import CATEGORY_LABELS
 
         # Build category → agents display
         cat_table = Table(box=None, padding=(0, 2))
@@ -334,11 +334,10 @@ def setup(ctx):
     """🔧 Interactive setup — configure providers, models, and preferences."""
     import os
     from pathlib import Path
+
     import questionary
     from rich.console import Console
     from rich.panel import Panel
-    from rich.columns import Columns
-    from rich.text import Text
 
     console = Console()
     config_dir = Path.home() / ".config" / "prism-decide"

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from ..core.types import ClassifierResult, DecisionCategory
 from ..providers.base import BaseProvider
 
