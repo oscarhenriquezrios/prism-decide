@@ -191,7 +191,9 @@ def _show_tui(obj: dict):
         console.print(Panel(
             "[yellow]💬[/]  [bold]¿Qué decisión quieres analizar?[/]\n\n"
             "[dim]Escribe tu situación o pregunta, por ejemplo:[/]\n"
-            "[dim]\"¿Debería aceptar la oferta de trabajo en BCTecnología?\"[/]",
+            "[dim]\"¿Debería aceptar una oferta de trabajo en otra ciudad?\"[/]\n"
+            "[dim]\"¿Me conviene mudarme a la casa que vi?\"[/]\n"
+            "[dim]\"¿Es buen momento para cambiar de rubro?\"[/]",
             border_style="yellow",
             padding=(1, 3),
         ))
