@@ -91,14 +91,14 @@ Abre la interfaz completa: header, agentes por categoría, cuadro de diálogo pa
 
 **Modo rápido (CLI):**
 ```bash
-prism-decide decide "¿Debería aceptar la oferta de BCTecnología?"
+prism-decide decide "¿Debería aceptar la nueva oferta laboral?"
 ```
 
 **Con opciones personalizadas:**
 ```bash
 prism-decide decide "¿Me cambio de trabajo?" \
-  --options "Quedarme en Scotiabank" \
-  --options "Irme a BCTecnología"
+  --options "Quedarme en mi empleo actual" \
+  --options "Irme a la nueva empresa"
 ```
 
 **Seleccionar agentes específicos:**
