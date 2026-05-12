@@ -7,6 +7,13 @@ from .risk import RiskAgent
 from .growth import GrowthAgent
 from .lifestyle import LifestyleAgent
 from .emotional import EmotionalAgent
+from .market import MarketAgent
+from .operational import OperationalAgent
+from .social import SocialAgent
+from .foresight import ForesightAgent
+from .health import HealthAgent
+from .ethical import EthicalAgent
+from .rational import RationalAgent
 
 AGENT_CLASSES: list[type[BaseAgent]] = [
     FinancialAgent,
@@ -14,6 +21,13 @@ AGENT_CLASSES: list[type[BaseAgent]] = [
     GrowthAgent,
     LifestyleAgent,
     EmotionalAgent,
+    MarketAgent,
+    OperationalAgent,
+    SocialAgent,
+    ForesightAgent,
+    HealthAgent,
+    EthicalAgent,
+    RationalAgent,
 ]
 
 AGENT_MAP: dict[str, type[BaseAgent]] = {

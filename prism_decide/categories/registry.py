@@ -6,13 +6,35 @@ from ..core.types import DecisionCategory
 
 # Default agent selection per category
 CATEGORY_AGENTS: dict[DecisionCategory, list[str]] = {
-    DecisionCategory.CAREER: ["financial", "risk", "growth", "lifestyle"],
-    DecisionCategory.BUSINESS: ["financial", "risk", "growth", "emotional"],
-    DecisionCategory.PERSONAL: ["emotional", "risk", "lifestyle", "financial"],
-    DecisionCategory.HEALTH: ["lifestyle", "emotional", "risk", "growth"],
-    DecisionCategory.EDUCATION: ["growth", "financial", "risk", "lifestyle"],
-    DecisionCategory.FINANCE: ["financial", "risk", "growth", "emotional"],
-    DecisionCategory.GENERAL: ["financial", "risk", "growth", "emotional", "lifestyle"],
+    DecisionCategory.CAREER: [
+        "financial", "risk", "growth", "lifestyle",
+        "market", "foresight", "social", "rational",
+    ],
+    DecisionCategory.BUSINESS: [
+        "financial", "risk", "growth", "emotional",
+        "market", "operational", "ethical", "foresight",
+    ],
+    DecisionCategory.PERSONAL: [
+        "emotional", "risk", "lifestyle", "financial",
+        "social", "health", "ethical", "rational",
+    ],
+    DecisionCategory.HEALTH: [
+        "lifestyle", "emotional", "risk", "growth",
+        "health", "social", "rational", "foresight",
+    ],
+    DecisionCategory.EDUCATION: [
+        "growth", "financial", "risk", "lifestyle",
+        "foresight", "market", "rational", "social",
+    ],
+    DecisionCategory.FINANCE: [
+        "financial", "risk", "growth", "emotional",
+        "market", "operational", "rational", "foresight",
+    ],
+    DecisionCategory.GENERAL: [
+        "financial", "risk", "growth", "emotional",
+        "lifestyle", "market", "operational", "social",
+        "foresight", "health", "ethical", "rational",
+    ],
 }
 
 
