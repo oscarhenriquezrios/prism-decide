@@ -133,13 +133,31 @@ def _show_tui(obj: dict):
         console.clear()
         console.print()
 
+        # ── LAST MODIFIED ──
+        import subprocess
+        try:
+            last_modified = subprocess.run(
+                ["git", "log", "-1", "--format=%ad", "--date=short"],
+                capture_output=True, text=True, cwd=__file__ and None,
+                timeout=5,
+            ).stdout.strip()
+            commit_msg = subprocess.run(
+                ["git", "log", "-1", "--format=%s"],
+                capture_output=True, text=True, cwd=__file__ and None,
+                timeout=5,
+            ).stdout.strip()[:60]
+            modified_str = f"\n[dim]📅 {last_modified}  ·  {commit_msg}[/]"
+        except Exception:
+            modified_str = ""
+
         # ── HEADER ──
         console.print(Panel.fit(
             "[bold cyan]🔮  PRISM-DECIDE[/]\n\n"
             "[white]Sistema multi-agente de deliberación para tomar mejores decisiones.[/]\n"
             "[white]Cada decisión es analizada por múltiples agentes de IA expertos en[/]\n"
             "[white]distintas áreas (financiera, riesgo, crecimiento, estilo de vida, emocional).[/]\n\n"
-            f"[dim]⚡ {provider_name}/{model_name}  ·  API key: {key_status}[/]",
+            f"[dim]⚡ {provider_name}/{model_name}  ·  API key: {key_status}[/]"
+            f"{modified_str}",
             border_style="cyan",
             padding=(1, 4),
         ))
