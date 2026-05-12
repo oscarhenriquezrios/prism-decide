@@ -11,4 +11,3 @@ venv/
 env/
 *.log
 .DS_Store
-.github/workflows/
