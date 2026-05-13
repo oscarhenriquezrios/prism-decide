@@ -33,7 +33,7 @@ class OpenAIProvider(BaseProvider):
         self.base_url = base_url.rstrip("/")
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "") or os.environ.get("DEEPSEEK_API_KEY", "")
         self._client = Client(
-            timeout=Timeout(60.0),
+            timeout=Timeout(120.0),
             headers={
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
@@ -51,7 +51,7 @@ class OpenAIProvider(BaseProvider):
     def _supports_json_mode(self) -> bool:
         """Check if the current provider supports native JSON mode."""
         url_lower = self.base_url.lower()
-        return any(p in url_lower for p in ["openai.com", "openrouter", "deepseek"])
+        return any(p in url_lower for p in ["openai.com", "openrouter"])
 
     def complete(
         self,
@@ -86,6 +86,7 @@ class OpenAIProvider(BaseProvider):
         prompt: str,
         system: str = "",
         temperature: float = 0.3,
+        max_tokens: int = 4096,
         **kwargs,
     ) -> dict:
         """Send a request expecting JSON output.
@@ -102,6 +103,7 @@ class OpenAIProvider(BaseProvider):
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
+            "max_tokens": max_tokens,
             **kwargs,
         }
 
@@ -141,4 +143,8 @@ class OpenAIProvider(BaseProvider):
                     return json.loads(match.group(0))
                 except json.JSONDecodeError:
                     pass
-            raise ValueError(f"Could not parse JSON from LLM response: {content[:200]}")
+            # Clean error for user — don't dump raw response
+            raise ValueError(
+                "El modelo no devolvió un formato JSON válido. "
+                "Intenta reformular tu pregunta o usar una más corta."
+            )

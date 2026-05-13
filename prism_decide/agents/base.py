@@ -50,11 +50,12 @@ class BaseAgent(ABC):
                         scores[opt] = max(1, min(10, raw["scores"][i].get("score", 5)))
                     else:
                         scores[opt] = 5
-        except Exception as e:
+        except Exception:
             scores = {opt: 5 for opt in options}
             raw = {
-                "reasoning": f"Error al obtener respuesta del LLM: {e}",
-                "key_factors": ["Error en conexión con proveedor"],
+                "reasoning": "No se pudo obtener respuesta del agente. "
+                             "Intenta con una pregunta más corta o específica.",
+                "key_factors": ["Error de conexión con el proveedor LLM"],
                 "recommendation": "No se pudo evaluar.",
             }
 
