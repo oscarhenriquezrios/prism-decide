@@ -30,34 +30,45 @@ class BaseAgent(ABC):
         ...
 
     def evaluate(self, decision: str, options: list[str]) -> AgentVerdict:
-        """Run the agent and return a structured verdict."""
+        """Run the agent and return a structured verdict. Retries once on failure."""
         system = self.get_system_prompt()
         prompt = self.get_user_prompt(decision, options)
 
-        try:
-            raw = self.provider.complete_json(prompt, system=system, temperature=0.5)
+        import time
 
-            scores = {}
-            for entry in raw.get("scores", []):
-                option = entry.get("option", "")
-                score = int(entry.get("score", 5))
-                scores[option] = max(1, min(10, score))
+        for attempt in range(2):
+            try:
+                raw = self.provider.complete_json(prompt, system=system, temperature=0.5)
 
-            # Map by index if keys don't match
-            if not scores or set(scores.keys()) != set(options):
-                for i, opt in enumerate(options):
-                    if i < len(raw.get("scores", [])):
-                        scores[opt] = max(1, min(10, raw["scores"][i].get("score", 5)))
-                    else:
-                        scores[opt] = 5
-        except Exception:
-            scores = {opt: 5 for opt in options}
-            raw = {
-                "reasoning": "No se pudo obtener respuesta del agente. "
-                             "Intenta con una pregunta más corta o específica.",
-                "key_factors": ["Error de conexión con el proveedor LLM"],
-                "recommendation": "No se pudo evaluar.",
-            }
+                scores = {}
+                for entry in raw.get("scores", []):
+                    option = entry.get("option", "")
+                    score = int(entry.get("score", 5))
+                    scores[option] = max(1, min(10, score))
+
+                # Map by index if keys don't match
+                if not scores or set(scores.keys()) != set(options):
+                    for i, opt in enumerate(options):
+                        if i < len(raw.get("scores", [])):
+                            scores[opt] = max(1, min(10, raw["scores"][i].get("score", 5)))
+                        else:
+                            scores[opt] = 5
+
+                # Success — break out of retry loop
+                break
+
+            except Exception:
+                if attempt == 0:
+                    time.sleep(2)  # brief pause before retry
+                    continue
+                # Final attempt failed — return fallback
+                scores = {opt: 5 for opt in options}
+                raw = {
+                    "reasoning": "No se pudo obtener respuesta del agente. "
+                                 "Intenta con una pregunta más corta o específica.",
+                    "key_factors": ["Error de conexión con el proveedor LLM"],
+                    "recommendation": "No se pudo evaluar.",
+                }
 
         return AgentVerdict(
             agent_id=self.agent_id,

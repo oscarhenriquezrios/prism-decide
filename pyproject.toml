@@ -1,6 +1,6 @@
 [project]
 name = "prism-decide"
-version = "0.1.1"
+version = "0.1.2"
 description = "Multi-agent deliberation system for better decisions"
 readme = "README.md"
 license = {text = "MIT"}
